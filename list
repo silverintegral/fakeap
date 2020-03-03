@@ -1,0 +1,6 @@
+#!/bin/sh
+
+#ifconfig wlan1 up
+#sleep 3
+nmcli -f SSID,BSSID,CHAN,SIGNAL,SECURITY dev wifi
+#ifconfig wlan1 down

@@ -1,0 +1,4 @@
+#!/bin/zsh
+
+echo 192.168.168.{3..254} | xargs -P256 -n1 ping -s1 -c1 -W1 | grep ttl | wc -l
+

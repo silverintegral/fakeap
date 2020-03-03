@@ -1,0 +1,4 @@
+#!/bin/sh
+
+apt install -y nmcli iwconfig tcpflow iw dnsmasq hostapd net-tools aircrack-ng nmap dnsutils apache2 libapache2-mod-php
+

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+sslsplit -D -l snifflogs/conn.log -j /opt/fakeap -S snifflogs -k sslsplit/ca.key -c sslsplit/ca.crt ssl 0.0.0.0 444
+
