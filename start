@@ -100,7 +100,7 @@ server=8.8.8.8
 listen-address=127.0.0.1
 EOD
 
-if [ ${mode} -ne 0 ]; then
+if [ ${mode} -ne 0 ] && [ ${mode} -ne 9 ]; then
 cat - <<EOD >> /opt/fakeap/conf/dnsmasq.conf
 address=/login.kansai-wifi-foundation.jp/$DSTRANGE.1
 address=/login.ssid.setting/$DSTRANGE.1
@@ -189,13 +189,18 @@ fi
 
 echo -n '.'
 
-#ifconfig $IFACEMON up
+ifconfig $IFACEMON up
 ifconfig $IFACESRC up
 
 echo -n '.';
 
 
-if [ ${mode} -ne 0 ]; then
+if [ ${mode} -eq 9 ]; then
+	systemctl start tor.service >/dev/null 2>&1 &
+	iptables -t nat -A PREROUTING -i $IFACEMON -p udp --dport 53 -j REDIRECT --to-ports 5300
+	iptables -t nat -A PREROUTING -i $IFACEMON -p tcp --dport 80 -j REDIRECT --to-ports 9050
+	iptables -t nat -A PREROUTING -i $IFACEMON -p tcp --dport 443 -j REDIRECT --to-ports 9050
+elif [ ${mode} -ne 0 ]; then
 	for i in `seq 101 130`
 	do
 		iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.$i -p tcp --dport 80 -j DNAT --to $DSTRANGE.1:80
