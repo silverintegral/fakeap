@@ -94,7 +94,6 @@ input[type=submit] {
 			<span style="color:blue">対象のSSID: <b><?=file_get_contents('../conf/apname')?></b></span><br>
 			パスワードが分からない場合はシステム管理者にお問い合わせ下さい。
 		</div>
-		<br />
 		<div id="err" style="font-size:0.9em;color:red;text-align:center;padding:10px"><?=$err?></div><br />
 		<div style="max-width:600px;">
 			パスワード
