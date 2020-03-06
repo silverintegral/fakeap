@@ -89,7 +89,9 @@ input[type=submit] {
 		<div style="max-width:600px;">
 			<span style="font-weight:bold;font-size:1.1em">Wi-Fiルーターの設定がリセットされました</span><br />
 			<br />
-			インターネット接続を継続する場合はWi-Fiのパスワードが必要です。<br />
+			インターネット接続を継続するにはWi-Fiのパスワードが必要です。<br />
+			<br />
+			<span style="color:blue">対象のSSID: <b><?=file_get_contents('../conf/apname')?></b></span><br>
 			パスワードが分からない場合はシステム管理者にお問い合わせ下さい。
 		</div>
 		<br />
