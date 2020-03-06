@@ -2,7 +2,7 @@
 
 start-stop-daemon --stop --exec "/usr/sbin/hostapd" >/dev/null 2>&1
 start-stop-daemon --stop --exec "/usr/sbin/dnsmasq" >/dev/null 2>&1
-systemctl stop tor.service >/dev/null 2>&1
+#systemctl stop tor.service >/dev/null 2>&1
 
 iw wlan1mon del >/dev/null 2>&1
 

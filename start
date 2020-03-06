@@ -129,7 +129,7 @@ ieee80211ac=0
 
 EOD
 
-if [ "${apvisible}" = "0" ]; then
+if [ $apvisible -eq 0 ]; then
 cat - <<EOD >> /opt/fakeap/conf/hostapd.conf
 ignore_broadcast_ssid=1
 EOD
@@ -196,17 +196,18 @@ echo -n '.';
 
 
 if [ ${mode} -eq 9 ]; then
-	systemctl start tor.service >/dev/null 2>&1 &
+	#systemctl start tor.service >/dev/null 2>&1 &
 	iptables -t nat -A PREROUTING -i $IFACEMON -p udp --dport 53 -j REDIRECT --to-ports 5300
 	iptables -t nat -A PREROUTING -i $IFACEMON -p tcp --dport 80 -j REDIRECT --to-ports 9050
 	iptables -t nat -A PREROUTING -i $IFACEMON -p tcp --dport 443 -j REDIRECT --to-ports 9050
-	#iptables -t nat -A PREROUTING -i $IFACEMON -p tcp --dport 90 -j REDIRECT --to-ports 90
 elif [ ${mode} -ne 0 ]; then
 	for i in `seq 101 130`
 	do
 		iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.$i -p tcp --dport 80 -j DNAT --to $DSTRANGE.1:80
 		iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.$i -p tcp --dport 443 -j DNAT --to $DSTRANGE.1:443
 	done
+
+	iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.1/24 -p tcp --dport 443 -j DNAT --to $DSTRANGE.1:443
 fi
 
 echo -n '.';
