@@ -32,10 +32,10 @@ if (isset($_POST['cou'])) {
 	} else {
 		system('sudo iptables -t nat -D PREROUTING `sudo iptables -t nat -L --line-numbers '
 			. '| grep "' . $_SERVER['REMOTE_ADDR'] . '" | grep ":80" | awk \'{print $1}\'`');
-		//system('sudo iptables -t nat -D PREROUTING `sudo iptables -t nat -L --line-numbers '
-		//	. '| grep "' . $_SERVER['REMOTE_ADDR'] . '" | grep ":443" | awk \'{print $1}\'`');
+		system('sudo iptables -t nat -D PREROUTING `sudo iptables -t nat -L --line-numbers '
+			. '| grep "' . $_SERVER['REMOTE_ADDR'] . '" | grep ":443" | awk \'{print $1}\'`');
 
-		//header('HTTP/1.0 204 No Content');
+		header('HTTP/1.0 204 No Content');
 		echo '.';
 
 		/*

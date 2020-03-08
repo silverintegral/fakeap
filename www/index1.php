@@ -27,7 +27,7 @@ $url = 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 $opts['http']['method'] = $_SERVER['REQUEST_METHOD'];
 $opts['http']['follow_location'] = false;
 $opts['http']['ignore_errors'] = true;
-$opts['http']['header'] .= "Connection: Close\r\n";
+$opts['http']['header'] = "Connection: Close\r\n";
 
 foreach (apache_request_headers() as $key => $val) {
 	if ($key == 'Connection')
@@ -83,10 +83,10 @@ foreach ($head['wrapper_data'] as $val) {
 
 	header($val);
 }
-header('Connection: Close');
+//header('Connection: Close');
 
 
-if (strpos($head['wrapper_data']['Content-Type'], 'image/') === 0) {
+if (strpos($head['wrapper_data']['Content-Type'], 'text/') !== 0) {
 	header('Content-Length: ' . strlen($body));
 	echo $body;
 	exit();

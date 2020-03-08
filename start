@@ -85,6 +85,15 @@ if [ ! "${mode}" ] || [ "${mode}" = "1" ]; then
 	mode=1
 fi
 
+if [ $mode -eq 0 ]; then
+	modestr="NO JAIL, PRIVATE MODE"
+elif [ $mode -eq 1 ]; then
+	modestr="FAKE AP JAIL MODE"
+elif [ $mode -eq 8 ]; then
+	modestr="NO JAIL, I2P PROXY MODE"
+elif [ $mode -eq 9 ]; then
+	modestr="NO JAIL, TOR PROXY MODE"
+fi
 
 myip=`ifconfig | grep -e "inet 192.168." -e "inet 172.16." -e "inet 10." | grep -v ".44.111" | grep -v "$DSTRANGE." | awk '{print $2}'`
 mygw=`echo $myip | awk -F "." '{print $1"."$2"."$3".1"}'`
@@ -100,7 +109,7 @@ server=8.8.8.8
 listen-address=127.0.0.1
 EOD
 
-if [ ${mode} -ne 0 ] && [ ${mode} -ne 9 ]; then
+if [ $mode -ne 0 ] && [ $mode -ne 8 ] && [ $mode -ne 9 ]; then
 cat - <<EOD >> /opt/fakeap/conf/dnsmasq.conf
 address=/login.kansai-wifi-foundation.jp/$DSTRANGE.1
 address=/login.ssid.setting/$DSTRANGE.1
@@ -115,18 +124,13 @@ hw_mode=g
 channel=${apch}
 country_code=JP
 ht_capab=[HT40] [SHORT-GI-20] [DSSS_CCK-40]
-
-#rts_threshold=2347
-#fragm_threshold=2346
 wmm_enabled=1
 disassoc_low_ack=1
 require_ht=0
-
 ieee80211n=1
 ieee80211d=1
 ieee80211h=0
 ieee80211ac=0
-
 EOD
 
 if [ $apvisible -eq 0 ]; then
@@ -145,7 +149,7 @@ wpa_passphrase=${appass}
 EOD
 fi
 
-if [ $mode -ne 0 ] && [ $mode -ne 9 ]; then
+if [ $mode -ne 0 ] && [ $mode -ne 8 ] && [ $mode -ne 9 ]; then
 cat - <<EOD > /opt/fakeap/www/.htaccess
 RewriteEngine On
 RewriteBase /
@@ -158,28 +162,22 @@ echo -n $apname > /opt/fakeap/conf/apname
 echo -n $appass > /opt/fakeap/conf/appass
 
 
-echo 'SSID    :' ${apname}
-echo 'BSSID   :' ${apmac}
-echo 'CHANNEL :' ${apch}
-echo 'PASS    :' ${appass}
-echo 'VISIBLE :' ${apvisible}
-echo 'MODE    :' ${mode}
+echo 'SSID :' ${apname}
+echo 'MAC  :' ${apmac}
+echo 'CH   :' ${apch}
+echo 'PASS :' ${appass}
+echo 'SHOW :' ${apvisible}
+echo 'MODE :' ${mode} - ${modestr}
 
 echo -n '.';
 
 
-#echo none > /sys/class/leds/ath9k_htc-phy1/trigger
-
-#airmon-ng start $IFACESRC 
 ifconfig $IFACESRC down
 echo -n '.';
 iw dev $IFACESRC interface add $IFACEMON type monitor
 echo -n '.';
 ifconfig $IFACEMON up $DSTRANGE.1 netmask 255.255.255.0
 echo -n '.';
-
-#route add -net $DSTRANGE.0 netmask 0.0.0.0 gw $DSTRANGE.1
-
 
 
 if [ "${apmac}" ]; then
@@ -195,19 +193,18 @@ ifconfig $IFACESRC up
 echo -n '.';
 
 
-if [ ${mode} -eq 9 ]; then
-	#systemctl start tor.service >/dev/null 2>&1 &
+if [ $mode -eq 9 ]; then
 	iptables -t nat -A PREROUTING -i $IFACEMON -p udp --dport 53 -j REDIRECT --to-ports 5300
 	iptables -t nat -A PREROUTING -i $IFACEMON -p tcp --dport 80 -j REDIRECT --to-ports 9050
 	iptables -t nat -A PREROUTING -i $IFACEMON -p tcp --dport 443 -j REDIRECT --to-ports 9050
-elif [ ${mode} -ne 0 ]; then
+elif [ $mode -ne 0 ]; then
 	for i in `seq 101 130`
 	do
 		iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.$i -p tcp --dport 80 -j DNAT --to $DSTRANGE.1:80
 		iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.$i -p tcp --dport 443 -j DNAT --to $DSTRANGE.1:443
 	done
 
-	iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.1/24 -p tcp --dport 443 -j DNAT --to $DSTRANGE.1:443
+	#iptables -t nat -A PREROUTING -i $IFACEMON -s $DSTRANGE.1/24 -p tcp --dport 443 -j DNAT --to $DSTRANGE.1:443O
 fi
 
 echo -n '.';
@@ -238,24 +235,16 @@ fi
 
 echo -n '.';
 
-sleep 3
-#route del default gw $mygw
-#route add -net $mynet gw $mygw dev $IFACEDST metric 1
-#route add -net $mynet gw $mygw $IFACEDST
-echo -n '.';
-
+sleep 1
 route add -net $DSTRANGE.0/24 gw $DSTRANGE.1 $IFACEMON
 echo -n '.';
 
-route del default gw 192.168.44.1 >/dev/null 2>&1
+#route del default gw 192.168.44.1 >/dev/null 2>&1
+#echo -n '.';
 
-echo -n '.';
 
-
-iw $IFACEMON set power_save off
-iwconfig $IFACEMON txpower 20
-#iwconfig $IFACEMON frag 512
-#iwconfig $IFACEMON rts 500
-iwconfig $IFACEMON rate 200M auto
+iw $IFACEMON set power_save off >/dev/null 2>&1
+iwconfig $IFACEMON txpower 20 >/dev/null 2>&1
+#iwconfig $IFACEMON rate 200M auto
 
 echo '\nOK. FAKE AP STARTED'
